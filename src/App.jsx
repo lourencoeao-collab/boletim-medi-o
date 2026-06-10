@@ -20,6 +20,7 @@ const PRECO_DEFAULT = {
 const SENHA_GESTOR = "extrema2026";
 const LS_FORNECEDORES = "bmedicao_fornecedores";
 const LS_BOLETINS     = "bmedicao_boletins";
+const LS_CONFIG       = "bmedicao_config";   // NOVO
 
 /* ═══════════════════════════════════════════════════════════════════════════
    HELPERS
@@ -38,6 +39,10 @@ const uid      = () => Date.now().toString(36)+Math.random().toString(36).slice(
 
 const lsGet = (key, def) => { try { const v=localStorage.getItem(key); return v?JSON.parse(v):def; } catch{ return def; } };
 const lsSet = (key, val)  => { try { localStorage.setItem(key, JSON.stringify(val)); } catch{} };
+
+// FIX: chave composta para dias por fornecedor + mês/ano
+const lsKeyDias = (fornecedorId, mes, ano) => `bmedicao_dias_${fornecedorId}_${mes}_${ano}`;
+const lsKeyConfig = (fornecedorId) => `${LS_CONFIG}_${fornecedorId}`;
 
 const STATUS_COLOR = {
   "CONCLUÍDO":    {bg:"#dcfce7",color:"#166534",dot:"#22c55e"},
@@ -304,7 +309,7 @@ function LoginScreen({ onLogin }) {
         </>}
       </div>
       <p style={{textAlign:"center",color:"rgba(255,255,255,0.25)",fontSize:11,marginTop:20}}>
-        Boletim Mensal de Máquinas · v4.0
+        Boletim Mensal de Máquinas · v4.1
       </p>
     </div>
   </div>;
@@ -359,11 +364,13 @@ function GestorDashboard({ onLogout, onEntrarFornecedor }) {
     salvar(fornecedores.filter(f=>f.id!==id));
   };
 
+  // FIX: soma horas de TODOS os meses lançados para este fornecedor
   const calcSaldoFornecedor = (f) => {
-    const boletins = lsGet(LS_BOLETINS,{});
-    const diasForn = (boletins[f.id]||[]);
+    const allKeys = Object.keys(localStorage).filter(k => k.startsWith(`bmedicao_dias_${f.id}_`));
+    const todosDias = allKeys.flatMap(k => lsGet(k, []));
+
     return f.equipamentos.map(eq=>{
-      const diasEq = diasForn.filter(d=>d.equipamento===eq.tipo);
+      const diasEq = todosDias.filter(d=>d.equipamento===eq.tipo);
       const horasLancadas = diasEq.reduce((a,d)=>a+calcHoras(d.entrada,d.almoco_saida,d.almoco_retorno,d.saida),0);
       const contratadas = parseFloat(eq.horasContratadas)||0;
       const utilizadas  = parseFloat(eq.horasUtilizadas)||0;
@@ -397,7 +404,8 @@ function GestorDashboard({ onLogout, onEntrarFornecedor }) {
           value={`${fornecedores.reduce((a,f)=>a+f.equipamentos.length,0)}`} accent={C.gold}/>
         <MetricCard icon="💰" label="Valor total lançado"
           value={`R$ ${fmtBRL(fornecedores.reduce((a,f)=>{
-            const boletins=lsGet(LS_BOLETINS,{}); const dias=boletins[f.id]||[];
+            const allKeys=Object.keys(localStorage).filter(k=>k.startsWith(`bmedicao_dias_${f.id}_`));
+            const dias=allKeys.flatMap(k=>lsGet(k,[]));
             return a+dias.reduce((b,d)=>{
               const h=calcHoras(d.entrada,d.almoco_saida,d.almoco_retorno,d.saida);
               const eq=f.equipamentos.find(e=>e.tipo===d.equipamento);
@@ -443,7 +451,7 @@ function GestorDashboard({ onLogout, onEntrarFornecedor }) {
                   <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
                     <thead>
                       <tr>
-                        {["Equipamento","Preço/h","Horas Contratadas","Horas Ant.","Lançadas (mês)","Total Usado","Saldo","Valor Mês"].map(h=>(
+                        {["Equipamento","Preço/h","Horas Contratadas","Horas Ant.","Lançadas (total)","Total Usado","Saldo","Valor Total"].map(h=>(
                           <th key={h} style={{background:C.navy,color:"#fff",padding:"8px 12px",
                             textAlign:"left",fontSize:10,fontWeight:700,textTransform:"uppercase",
                             letterSpacing:"0.5px",whiteSpace:"nowrap"}}>{h}</th>
@@ -517,8 +525,6 @@ function GestorDashboard({ onLogout, onEntrarFornecedor }) {
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
             <Field label="Nome / Razão Social *" value={form.nome} onChange={v=>setF("nome",v)}/>
             <Field label="CNPJ" value={form.cnpj} onChange={v=>setF("cnpj",v)} placeholder="00.000.000/0001-00"/>
-            <Field label="Encarregado" value={form.encarregado} onChange={v=>setF("encarregado",v)}/>
-            <Field label="Obra" value={form.obra} onChange={v=>setF("obra",v)}/>
           </div>
         </div>
       </Card>
@@ -611,7 +617,29 @@ function GestorDashboard({ onLogout, onEntrarFornecedor }) {
    TELA CONFIG
 ═══════════════════════════════════════════════════════════════════════════ */
 function ConfigScreen({ fornecedor, config, setConfig, onNext, onLogout }) {
-  const set=(k,v)=>setConfig(p=>({...p,[k]:v}));
+  const set=(k,v)=>{
+    const novoConfig={...config,[k]:v};
+    // usa setConfig do App (que também recarrega os dias do novo mês)
+    setConfig(novoConfig);
+    lsSet(lsKeyConfig(fornecedor.id), novoConfig);
+  };
+
+  // FIX: saldo real = contratadas - utilizadas_anteriores - horas_lancadas_no_mes_atual
+  const calcSaldoReal = (eq) => {
+    const key = lsKeyDias(fornecedor.id, config.mes, config.ano);
+    const diasMes = lsGet(key, []);
+    const horasLancadasMes = diasMes
+      .filter(d=>d.equipamento===eq.tipo)
+      .reduce((a,d)=>a+calcHoras(d.entrada,d.almoco_saida,d.almoco_retorno,d.saida),0);
+    const contratadas = parseFloat(eq.horasContratadas)||0;
+    const utilizadas  = parseFloat(eq.horasUtilizadas)||0;
+    return {
+      contratadas,
+      utilizadas,
+      horasLancadasMes,
+      saldo: contratadas > 0 ? contratadas - utilizadas - horasLancadasMes : null,
+    };
+  };
 
   return <div style={S.page}>
     <div style={S.topBar}>
@@ -651,16 +679,17 @@ function ConfigScreen({ fornecedor, config, setConfig, onNext, onLogout }) {
       <div style={{padding:"20px 24px"}}>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
           {fornecedor.equipamentos.map(eq=>{
-            const contratadas=parseFloat(eq.horasContratadas)||0;
-            const utilizadas=parseFloat(eq.horasUtilizadas)||0;
-            const saldo=contratadas>0?contratadas-utilizadas:null;
-            const pct=contratadas>0?Math.min((utilizadas/contratadas)*100,100):0;
+            // FIX: usa saldo real com horas já lançadas descontadas
+            const {contratadas, utilizadas, horasLancadasMes, saldo} = calcSaldoReal(eq);
+            const totalUsado = utilizadas + horasLancadasMes;
+            const pct = contratadas>0 ? Math.min((totalUsado/contratadas)*100,100) : 0;
             return <div key={eq.id} style={{border:`1.5px solid ${C.border}`,borderRadius:9,
               padding:"14px 16px",background:C.sand}}>
               <div style={{fontWeight:800,fontSize:13,color:C.navy,marginBottom:8}}>{eq.tipo}</div>
-              <div style={{display:"flex",gap:12,fontSize:12,marginBottom:8}}>
+              <div style={{display:"flex",flexWrap:"wrap",gap:12,fontSize:12,marginBottom:8}}>
                 <span>Contratadas: <strong>{contratadas>0?fmtHora(contratadas):"—"}</strong></span>
-                <span>Utilizadas: <strong>{fmtHora(utilizadas)}</strong></span>
+                <span>Utilizadas ant.: <strong>{fmtHora(utilizadas)}</strong></span>
+                {horasLancadasMes>0&&<span style={{color:C.navy}}>Lançadas (mês): <strong>{fmtHora(horasLancadasMes)}</strong></span>}
               </div>
               {contratadas>0&&<>
                 <div style={{background:C.bg,borderRadius:5,height:8,overflow:"hidden",marginBottom:6}}>
@@ -703,24 +732,62 @@ function LancamentoScreen({ fornecedor, config, dias, setDias, onNext, onBack })
   const tiposEquip=fornecedor.equipamentos.map(e=>e.tipo);
   const precosMaquina=fornecedor.equipamentos.reduce((a,e)=>({...a,[e.tipo]:e.preco}),{});
 
-  const addDia=()=>{ const d={...initialDia(),equipamento:tiposEquip[0]||EQUIPAMENTOS[0],operador:fornecedor.encarregado||""}; setDias(p=>[...p,d]); setAtivo(d.id); };
-  const upd=(id,k,v)=>setDias(p=>p.map(d=>d.id===id?{...d,[k]:v}:d));
-  const rem=id=>{setDias(p=>p.filter(d=>d.id!==id));if(ativo===id)setAtivo(null);};
+  const addDia=()=>{
+    const d={...initialDia(),equipamento:tiposEquip[0]||EQUIPAMENTOS[0],operador:fornecedor.encarregado||""};
+    const novos=[...dias,d];
+    setDias(novos);
+    // FIX: salva no localStorage ao adicionar dia
+    lsSet(lsKeyDias(fornecedor.id,config.mes,config.ano), novos);
+    setAtivo(d.id);
+  };
+
+  const upd=(id,k,v)=>{
+    setDias(p=>{
+      const novos=p.map(d=>d.id===id?{...d,[k]:v}:d);
+      // FIX: salva no localStorage a cada alteração
+      lsSet(lsKeyDias(fornecedor.id,config.mes,config.ano), novos);
+      return novos;
+    });
+  };
+
+  const rem=id=>{
+    setDias(p=>{
+      const novos=p.filter(d=>d.id!==id);
+      // FIX: salva no localStorage ao remover
+      lsSet(lsKeyDias(fornecedor.id,config.mes,config.ano), novos);
+      return novos;
+    });
+    if(ativo===id)setAtivo(null);
+  };
 
   const handleFotos=(id,files)=>{
     Array.from(files).forEach(file=>{
       const now=new Date();
       const ts=now.toLocaleDateString("pt-BR")+" "+now.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
       const reader=new FileReader();
-      reader.onload=e=>setDias(p=>p.map(d=>d.id===id?{...d,fotos:d.fotos.length<6?[...d.fotos,{name:file.name,url:e.target.result,caption:"",timestamp:ts}]:d.fotos}:d));
+      reader.onload=e=>{
+        setDias(p=>{
+          const novos=p.map(d=>d.id===id?{...d,fotos:d.fotos.length<6?[...d.fotos,{name:file.name,url:e.target.result,caption:"",timestamp:ts}]:d.fotos}:d);
+          lsSet(lsKeyDias(fornecedor.id,config.mes,config.ano), novos);
+          return novos;
+        });
+      };
       reader.readAsDataURL(file);
     });
   };
-  const remFoto=(dId,idx)=>setDias(p=>p.map(d=>d.id===dId?{...d,fotos:d.fotos.filter((_,i)=>i!==idx)}:d));
+
+  const remFoto=(dId,idx)=>{
+    setDias(p=>{
+      const novos=p.map(d=>d.id===dId?{...d,fotos:d.fotos.filter((_,i)=>i!==idx)}:d);
+      lsSet(lsKeyDias(fornecedor.id,config.mes,config.ano), novos);
+      return novos;
+    });
+  };
 
   const dia=dias.find(d=>d.id===ativo);
   const totalMes=dias.reduce((a,d)=>a+calcHoras(d.entrada,d.almoco_saida,d.almoco_retorno,d.saida),0);
 
+  // FIX: saldo real = contratadas - utilizadas_anteriores - horas_do_mes
   const saldoPorEq=fornecedor.equipamentos.map(eq=>{
     const horasLanc=dias.filter(d=>d.equipamento===eq.tipo)
       .reduce((a,d)=>a+calcHoras(d.entrada,d.almoco_saida,d.almoco_retorno,d.saida),0);
@@ -935,7 +1002,7 @@ function LancamentoScreen({ fornecedor, config, dias, setDias, onNext, onBack })
                       return f?(
                         <div key={idx} style={{borderRadius:8,overflow:"hidden",border:`1.5px solid ${C.border}`}}>
                           <div style={{position:"relative"}}>
-                            <img src={f.url} alt={f.name} style={{width:"100%",height:140,objectFit:"cover",display:"block"}}/>
+                            <img src={f.url} alt={f.name} style={{width:"100%",height:140,objectFit:"contain",background:"#000",display:"block"}}/>
                             <button onClick={()=>remFoto(dia.id,idx)}
                               style={{position:"absolute",top:5,right:5,background:"rgba(0,0,0,0.6)",color:"#fff",
                                 border:"none",borderRadius:20,width:22,height:22,fontSize:11,cursor:"pointer"}}>✕</button>
@@ -1158,7 +1225,7 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
               {d.fotos.map((foto,fi)=>(
                 <div key={fi} style={{borderRadius:9,overflow:"hidden",border:`2px solid ${C.border}`,position:"relative"}}>
                   <img src={foto.url} alt={foto.name}
-                    style={{width:"100%",height:180,objectFit:"cover",display:"block"}}/>
+                    style={{width:"100%",height:180,objectFit:"contain",background:"#000",display:"block"}}/>
                   <div style={{position:"absolute",top:8,left:8,background:"rgba(0,0,0,0.6)",
                     color:"#fff",borderRadius:4,padding:"2px 8px",fontSize:11,fontWeight:800}}>
                     {fi+1}
@@ -1202,23 +1269,45 @@ export default function App() {
   const login=(perfil,fornecedor)=>{
     setSessao(perfil==="gestor"?{perfil:"gestor"}:{perfil:"fornecedor",fornecedor});
     setTela("config");
-    setDias([]);
-    setConfig({mes:"Maio",ano:"2026",vigencia:""});
+    if(perfil==="fornecedor"&&fornecedor){
+      // FIX: carrega config salva do fornecedor
+      const cfgSalva = lsGet(lsKeyConfig(fornecedor.id), null);
+      const cfg = cfgSalva || {mes:"Maio",ano:"2026",vigencia:""};
+      setConfig(cfg);
+      // FIX: carrega dias do mês correspondente
+      const diasSalvos = lsGet(lsKeyDias(fornecedor.id, cfg.mes, cfg.ano), []);
+      setDias(diasSalvos);
+    } else {
+      setConfig({mes:"Maio",ano:"2026",vigencia:""});
+      setDias([]);
+    }
   };
+
   const logout=()=>{ setSessao(null); setTela("config"); setDias([]); };
 
   const entrarFornecedor=(f)=>{
+    const cfgSalva = lsGet(lsKeyConfig(f.id), null);
+    const cfg = cfgSalva || {mes:"Maio",ano:"2026",vigencia:""};
     setSessao({perfil:"fornecedor",fornecedor:f,isGestorSimulando:true});
-    setTela("config"); setDias([]);
-    setConfig({mes:"Maio",ano:"2026",vigencia:""});
+    setTela("config");
+    setConfig(cfg);
+    // FIX: carrega dias salvos do fornecedor
+    const diasSalvos = lsGet(lsKeyDias(f.id, cfg.mes, cfg.ano), []);
+    setDias(diasSalvos);
+  };
+
+  // quando mês/ano/vigência muda, recarrega os dias do período e salva config
+  const handleSetConfig = (novoConfig) => {
+    setConfig(novoConfig);
+    if(sessao?.fornecedor){
+      lsSet(lsKeyConfig(sessao.fornecedor.id), novoConfig);
+      const diasSalvos = lsGet(lsKeyDias(sessao.fornecedor.id, novoConfig.mes, novoConfig.ano), []);
+      setDias(diasSalvos);
+    }
   };
 
   const irBoletim=()=>{
-    if(sessao?.fornecedor){
-      const boletins=lsGet(LS_BOLETINS,{});
-      boletins[sessao.fornecedor.id]=dias;
-      lsSet(LS_BOLETINS,boletins);
-    }
+    // dias já estão sendo salvos em tempo real na LancamentoScreen
     setTela("boletim");
   };
 
@@ -1230,9 +1319,14 @@ export default function App() {
   const fornecedor=sessao.fornecedor;
 
   return <>
-    {tela==="config"&&<ConfigScreen fornecedor={fornecedor} config={config} setConfig={setConfig}
-      onNext={()=>setTela("lancamento")}
-      onLogout={sessao.isGestorSimulando?()=>{setSessao({perfil:"gestor"});setTela("config");}:logout}/>}
+    {tela==="config"&&<ConfigScreen fornecedor={fornecedor} config={config} setConfig={handleSetConfig}
+      onNext={()=>{
+        // recarrega dias do mês/ano atual antes de entrar na tela de lançamento
+        const diasSalvos = lsGet(lsKeyDias(fornecedor.id, config.mes, config.ano), []);
+        setDias(diasSalvos);
+        setTela("lancamento");
+      }}
+      onLogout={sessao.isGestorSimulando?()=>{setSessao({perfil:"gestor"});setTela("config");}:logout}/> }
     {tela==="lancamento"&&<LancamentoScreen fornecedor={fornecedor} config={config} dias={dias}
       setDias={setDias} onNext={irBoletim} onBack={()=>setTela("config")}/>}
     {tela==="boletim"&&<BoletimScreen fornecedor={fornecedor} config={config} dias={dias}
