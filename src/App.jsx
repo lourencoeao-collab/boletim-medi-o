@@ -1287,16 +1287,13 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
           display: table-header-group; /* repete cabeçalho da tabela em cada folha */
         }
 
-        /* Cada relatório diário sai em sua própria folha, completo */
+        /* Cada relatório diário sai em sua própria folha, completo
+           (inclusive o primeiro, que NÃO pode grudar no resumo) */
         .folha-diaria {
           break-before: page;
           page-break-before: always;
           break-inside: avoid;
           page-break-inside: avoid;
-        }
-        .folha-diaria:first-of-type {
-          break-before: auto;
-          page-break-before: auto;
         }
         /* O registro fotográfico de cada dia vai em folha separada */
         .folha-fotos {
