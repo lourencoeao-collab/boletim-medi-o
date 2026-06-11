@@ -1139,8 +1139,8 @@ function LancamentoScreen({ fornecedor, config, dias, setDias, onNext, onBack })
                   </div>
                 </div>
                 <div style={{marginTop:14}}>
-                  <Field label="Obra / Descrição do Local" value={dia.obra} onChange={v=>upd(dia.id,"obra",v)}
-                    placeholder="Ex: Pavimentação Rua X, bairro Y — ou tipo/local da obra"/>
+                  <Field label="Local da Obra" value={dia.obra} onChange={v=>upd(dia.id,"obra",v)}
+                    placeholder="Ex: Rua das Flores, Bairro Centro"/>
                 </div>
                 <div style={{marginTop:14}}>
                   <Label>Descritivo das Atividades</Label>
@@ -1533,7 +1533,7 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
             <InfoCell label="Operador" value={d.operador}/>
             <InfoCell label="Equipamento" value={d.equipamento}/>
             <InfoCell label="Serviço" value={d.servico==="__OUTRO__"?"":d.servico}/>
-            <InfoCell label="Obra" value={d.obra||fornecedor.obra}/>
+            <InfoCell label="Local da Obra" value={d.obra||fornecedor.obra}/>
           </div>
           {d.descritivo&&<div style={{background:C.sand,borderRadius:8,padding:"12px 16px",
             marginBottom:16,border:`1px solid ${C.border}`}}>
