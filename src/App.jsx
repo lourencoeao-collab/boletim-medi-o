@@ -47,7 +47,7 @@ const lsSet = (key, val) => {
 
 const lsKeyDias    = (fId, mes, ano) => `bmedicao_dias_${fId}_${mes}_${ano}`;
 const lsKeyConfig  = (fId) => `${LS_CONFIG}_${fId}`;
-const lsKeyRascunho= (fId, mes, ano) => `bmedicao_rascunho_${fId}_${mes}_${ano}`;
+
 
 const STATUS_COLOR = {
   "CONCLUÍDO":    {bg:"#dcfce7",color:"#166534",dot:"#22c55e"},
