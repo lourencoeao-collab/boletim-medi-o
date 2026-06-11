@@ -1139,7 +1139,8 @@ function LancamentoScreen({ fornecedor, config, dias, setDias, onNext, onBack })
                   </div>
                 </div>
                 <div style={{marginTop:14}}>
-                  <Field label="Obra" value={dia.obra} onChange={v=>upd(dia.id,"obra",v)} placeholder={fornecedor.obra}/>
+                  <Field label="Obra / Descrição do Local" value={dia.obra} onChange={v=>upd(dia.id,"obra",v)}
+                    placeholder="Ex: Pavimentação Rua X, bairro Y — ou tipo/local da obra"/>
                 </div>
                 <div style={{marginTop:14}}>
                   <Label>Descritivo das Atividades</Label>
