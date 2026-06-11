@@ -373,7 +373,10 @@ function EquipamentoSelect({ value, onChange, precos, opcoes }) {
    TELA LOGIN
 ═══════════════════════════════════════════════════════════════════════════ */
 function LoginScreen({ onLogin }) {
-  const [perfil,setPerfil]=useState(null);
+  // Se o link tiver ?fornecedor, já abre direto no login do fornecedor
+  const fornecedorDireto = typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).has("fornecedor");
+  const [perfil,setPerfil]=useState(fornecedorDireto ? "fornecedor" : null);
   const [usuario,setUsuario]=useState("");
   const [senha,setSenha]=useState("");
   const [erro,setErro]=useState("");
@@ -450,8 +453,8 @@ function LoginScreen({ onLogin }) {
         </>}
 
         {perfil==="fornecedor"&&<>
-          <button style={{background:"none",border:"none",color:C.muted,fontSize:12,cursor:"pointer",padding:0,marginBottom:20,fontFamily:"inherit"}}
-            onClick={()=>{setPerfil(null);setUsuario("");setSenha("");setErro("");}}>← Voltar</button>
+          {!fornecedorDireto && <button style={{background:"none",border:"none",color:C.muted,fontSize:12,cursor:"pointer",padding:0,marginBottom:20,fontFamily:"inherit"}}
+            onClick={()=>{setPerfil(null);setUsuario("");setSenha("");setErro("");}}>← Voltar</button>}
           <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:16}}>
             <Field label="Usuário" value={usuario} onChange={setUsuario} placeholder="seu.usuario"/>
             <div>
@@ -771,7 +774,7 @@ function GestorDashboard({ onLogout, onEntrarFornecedor }) {
 /* ═══════════════════════════════════════════════════════════════════════════
    TELA CONFIG
 ═══════════════════════════════════════════════════════════════════════════ */
-function ConfigScreen({ fornecedor, config, setConfig, onNext, onLogout }) {
+function ConfigScreen({ fornecedor, config, setConfig, onNext, onLogout, podeVerSaldo }) {
   const set=(k,v)=>{
     const novoConfig={...config,[k]:v};
     setConfig(novoConfig);
@@ -823,7 +826,8 @@ function ConfigScreen({ fornecedor, config, setConfig, onNext, onLogout }) {
       </div>
     </Card>
 
-    <Card>
+    {/* Card de saldo só visível para o gestor */}
+    {podeVerSaldo && <Card>
       <SectionHead icon="📊" title="Saldo por Equipamento"/>
       <div style={{padding:"20px 24px"}}>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
@@ -852,7 +856,7 @@ function ConfigScreen({ fornecedor, config, setConfig, onNext, onLogout }) {
           })}
         </div>
       </div>
-    </Card>
+    </Card>}
 
     <div style={{display:"flex",justifyContent:"flex-end",paddingBottom:32}}>
       <Btn onClick={onNext} style={{padding:"12px 28px",fontSize:14}}>
@@ -874,7 +878,7 @@ const initialDia=()=>({
   observacoes:"", fotos:[],
 });
 
-function LancamentoScreen({ fornecedor, config, dias, setDias, onNext, onBack }) {
+function LancamentoScreen({ fornecedor, config, dias, setDias, onNext, onBack, podeVerSaldo }) {
   const [ativo,setAtivo]=useState(null);
   const [ultimoSalvo,setUltimoSalvo]=useState(null);
   const fileRef=useRef({});
@@ -1014,7 +1018,8 @@ function LancamentoScreen({ fornecedor, config, dias, setDias, onNext, onBack })
     </div>
     <StepBar step={2}/>
 
-    {saldoPorEq.some(e=>e.saldo!==null)&&(
+    {/* Barras de saldo só visíveis para o gestor */}
+    {podeVerSaldo && saldoPorEq.some(e=>e.saldo!==null)&&(
       <div style={{display:"flex",gap:10,marginBottom:18,flexWrap:"wrap"}}>
         {saldoPorEq.filter(e=>e.saldo!==null).map(eq=>{
           const cor=eq.saldo<0?C.red:eq.saldo<(parseFloat(eq.horasContratadas)||0)*0.1?"#d97706":C.green;
@@ -1704,6 +1709,7 @@ export default function App() {
 
   return <>
     {tela==="config"&&<ConfigScreen fornecedor={fornecedor} config={config} setConfig={handleSetConfig}
+      podeVerSaldo={!!sessao.isGestorSimulando}
       onNext={()=>{
         const diasSalvos = lsGet(lsKeyDias(fornecedor.id, config.mes, config.ano), []);
         setDias(diasSalvos);
@@ -1711,6 +1717,7 @@ export default function App() {
       }}
       onLogout={sessao.isGestorSimulando?()=>{setSessao({perfil:"gestor"});setTela("config");}:logout}/>}
     {tela==="lancamento"&&<LancamentoScreen fornecedor={fornecedor} config={config} dias={dias}
+      podeVerSaldo={!!sessao.isGestorSimulando}
       setDias={setDias} onNext={irBoletim} onBack={()=>setTela("config")}/>}
     {tela==="boletim"&&<BoletimScreen fornecedor={fornecedor} config={config} dias={dias}
       onBack={()=>setTela("lancamento")}/>}
