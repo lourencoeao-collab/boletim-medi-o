@@ -30,6 +30,8 @@ const calcHoras = (e,as,ar,s) => {
   return isNaN(v)||v<0 ? 0 : Math.round(v*100)/100;
 };
 const fmtHora  = h => `${Math.floor(h)}h${Math.round((h%1)*60).toString().padStart(2,"0")}min`;
+// Horas em decimal com vírgula (ex: 8.37 -> "8,37") — mesmo formato do Excel
+const fmtDecimal = h => Number(h).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtBRL   = v => Number(v).toLocaleString("pt-BR",{minimumFractionDigits:2});
 const fmtData  = d => d ? new Date(d+"T12:00").toLocaleDateString("pt-BR") : "—";
 const getDiaSem= d => d ? DIAS_SEMANA[new Date(d+"T12:00").getDay()] : "";
@@ -115,7 +117,7 @@ const exportarExcel = (fornecedor, config, dias) => {
     ["Mês/Ano", `${config.mes}/${config.ano}`],
     ["Vigência", config.vigencia || "—"],
     [""],
-    ["Nº","Data","Dia da Semana","Local","Equipamento","Operador","Entrada","Saída Almoço","Retorno Almoço","Saída","Total Horas","Valor R$","Status","Serviço","Obra","Descritivo","Clima Manhã","Cond. Manhã","Clima Tarde","Cond. Tarde","Observações"],
+    ["Nº","Data","Dia da Semana","Local","Equipamento","Operador","Entrada","Saída Almoço","Retorno Almoço","Saída","Total Horas","Horas (decimal)","Valor R$","Status","Serviço","Obra","Descritivo","Clima Manhã","Cond. Manhã","Clima Tarde","Cond. Tarde","Observações"],
   ];
 
   let totalH = 0, totalV = 0;
@@ -135,6 +137,7 @@ const exportarExcel = (fornecedor, config, dias) => {
       d.almoco_retorno,
       d.saida,
       fmtHora(h),
+      fmtDecimal(h),
       `R$ ${fmtBRL(v)}`,
       d.status,
       d.servico || "",
@@ -149,7 +152,7 @@ const exportarExcel = (fornecedor, config, dias) => {
   });
 
   linhasResumo.push([]);
-  linhasResumo.push(["","","","","","","","","","","TOTAL",`R$ ${fmtBRL(totalV)}`,"","","","","","","","",""]);
+  linhasResumo.push(["","","","","","","","","","","TOTAL",fmtDecimal(totalH),`R$ ${fmtBRL(totalV)}`,"","","","","","","","",""]);
   linhasResumo.push(["","","","","","","","","","",fmtHora(totalH)]);
 
   // ── Aba 2: Saldo por Equipamento ───────────────────────────────────────
@@ -1376,7 +1379,7 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
         <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
           <thead>
             <tr>
-              {["Data","Local","Equipamento","Entrada","Saída","Horas","Valor (R$)","Status"].map(h=>(
+              {["Data","Local","Equipamento","Entrada","Saída","Horas","Horas (dec.)","Valor (R$)","Status"].map(h=>(
                 <th key={h} style={{background:C.navy,color:"#fff",padding:"10px 12px",textAlign:"left",
                   fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.5px",whiteSpace:"nowrap"}}>{h}</th>
               ))}
@@ -1393,6 +1396,7 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
                 <td style={{...T.td,textAlign:"center"}}>{d.entrada}</td>
                 <td style={{...T.td,textAlign:"center"}}>{d.saida}</td>
                 <td style={{...T.td,textAlign:"center",fontWeight:800,color:C.navy}}>{fmtHora(h)}</td>
+                <td style={{...T.td,textAlign:"center",fontWeight:700,color:C.muted}}>{fmtDecimal(h)}</td>
                 <td style={{...T.td,textAlign:"right",fontWeight:700}}>R$ {fmtBRL(valor)}</td>
                 <td style={T.td}><StatusBadge status={d.status}/></td>
               </tr>;
@@ -1401,6 +1405,7 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
               <td colSpan={5} style={{...T.td,fontWeight:800,textAlign:"right",color:C.navy,
                 fontSize:11,textTransform:"uppercase"}}>Subtotal</td>
               <td style={{...T.td,fontWeight:900,color:C.navy,textAlign:"center",fontSize:14}}>{fmtHora(totalHoras)}</td>
+              <td style={{...T.td,fontWeight:900,color:C.navy,textAlign:"center",fontSize:13}}>{fmtDecimal(totalHoras)}</td>
               <td style={{...T.td,fontWeight:900,textAlign:"right",fontSize:14}}>R$ {fmtBRL(totalValor)}</td>
               <td style={T.td}/>
             </tr>
