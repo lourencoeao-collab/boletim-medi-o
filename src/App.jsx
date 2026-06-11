@@ -8,6 +8,21 @@ const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Ag
 const CLIMA_OPTS = ["SOL","NUBLADO","CHUVA","PARCIALMENTE NUBLADO"];
 const COND_OPTS  = ["ESTÁVEL","INSTÁVEL","CHUVOSO"];
 const STATUS_OPTS = ["CONCLUÍDO","EM ANDAMENTO","PARALISADO","PENDENTE"];
+// Lista padrão de serviços — o fornecedor escolhe em vez de digitar (evita erros de escrita)
+const SERVICOS_PADRAO = [
+  "TRANSPORTE DE SOLO",
+  "TRANSPORTE DE RESÍDUO",
+  "TRANSPORTE DE MATERIAL",
+  "CARREGAMENTO",
+  "ESCAVAÇÃO",
+  "TERRAPLANAGEM",
+  "COMPACTAÇÃO",
+  "NIVELAMENTO",
+  "ABERTURA DE VALA",
+  "LIMPEZA DE TERRENO",
+  "ESPALHAMENTO DE MATERIAL",
+  "OUTRO (DIGITAR)",
+];
 const EQUIPAMENTOS = [
   "RETROESCAVADEIRA","ESCAVADEIRA HIDRÁULICA","CAMINHÃO 10³",
   "ROLO COMPACTADOR","PÁ CARREGADEIRA","CAMINHÃO 5³","CAMINHÃO 14³","TRATOR DE ESTEIRA"
@@ -140,7 +155,7 @@ const exportarExcel = (fornecedor, config, dias) => {
       fmtDecimal(h),
       `R$ ${fmtBRL(v)}`,
       d.status,
-      d.servico || "",
+      d.servico==="__OUTRO__" ? "" : (d.servico || ""),
       d.obra || "",
       d.descritivo || "",
       d.clima_manha,
@@ -878,6 +893,34 @@ function LancamentoScreen({ fornecedor, config, dias, setDias, onNext, onBack })
     return ok;
   }, [fornecedor.id, config.mes, config.ano]);
 
+  // Valida todos os dias e retorna lista de problemas encontrados
+  const validarDias = () => {
+    const erros = [];
+    dias.forEach((d, i) => {
+      const ref = d.data ? fmtData(d.data) : `Dia ${i+1}`;
+      const faltando = [];
+      if (!d.data) faltando.push("data");
+      if (!d.local || !d.local.trim()) faltando.push("local");
+      if (!d.operador || !d.operador.trim()) faltando.push("operador");
+      if (!d.servico || !d.servico.trim() || d.servico==="__OUTRO__") faltando.push("serviço");
+      const h = calcHoras(d.entrada, d.almoco_saida, d.almoco_retorno, d.saida);
+      if (h <= 0) faltando.push("horários válidos");
+      if (!d.fotos || d.fotos.length < 6) faltando.push(`6 fotos (tem ${d.fotos?d.fotos.length:0})`);
+      if (faltando.length) erros.push(`• ${ref}: falta ${faltando.join(", ")}`);
+    });
+    return erros;
+  };
+
+  // Tenta avançar para o boletim, validando antes
+  const tentarVerBoletim = () => {
+    const erros = validarDias();
+    if (erros.length > 0) {
+      alert("⚠ Não é possível gerar o boletim. Corrija os itens abaixo:\n\n" + erros.join("\n"));
+      return;
+    }
+    onNext();
+  };
+
   const addDia=()=>{
     const d={...initialDia(),equipamento:tiposEquip[0]||EQUIPAMENTOS[0],operador:fornecedor.encarregado||""};
     const novos=[...dias,d];
@@ -962,7 +1005,7 @@ function LancamentoScreen({ fornecedor, config, dias, setDias, onNext, onBack })
           ✓ Salvo às {ultimoSalvo.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}
         </span>}
       </div>
-      <Btn onClick={onNext} disabled={dias.length===0} style={{padding:"9px 18px",fontSize:13}}>Ver Boletim →</Btn>
+      <Btn onClick={tentarVerBoletim} disabled={dias.length===0} style={{padding:"9px 18px",fontSize:13}}>Ver Boletim →</Btn>
     </div>
     <StepBar step={2}/>
 
@@ -1012,8 +1055,20 @@ function LancamentoScreen({ fornecedor, config, dias, setDias, onNext, onBack })
                       padding:"2px 8px",fontSize:11,fontWeight:800}}>{fmtHora(h)}</span>
                   </div>
                   <div style={{fontSize:11,color:C.muted,marginBottom:6}}>
-                    {d.equipamento}{d.servico&&` · ${d.servico}`}
+                    {d.equipamento}{d.servico&&d.servico!=="__OUTRO__"&&` · ${d.servico}`}
                   </div>
+                  {/* Selo de completude do dia */}
+                  {(()=>{
+                    const completo = d.data && d.local?.trim() && d.operador?.trim()
+                      && d.servico?.trim() && d.servico!=="__OUTRO__"
+                      && calcHoras(d.entrada,d.almoco_saida,d.almoco_retorno,d.saida)>0
+                      && d.fotos?.length===6;
+                    return <div style={{marginBottom:6}}>
+                      {completo
+                        ? <span style={{background:C.greenBg,color:C.green,borderRadius:5,padding:"2px 8px",fontSize:10,fontWeight:700}}>✓ Completo</span>
+                        : <span style={{background:"#FEF3C7",color:"#92400e",borderRadius:5,padding:"2px 8px",fontSize:10,fontWeight:700}}>⚠ Incompleto</span>}
+                    </div>;
+                  })()}
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <StatusBadge status={d.status}/>
                     <button onClick={e=>{e.stopPropagation();rem(d.id);}}
@@ -1062,7 +1117,26 @@ function LancamentoScreen({ fornecedor, config, dias, setDias, onNext, onBack })
                       onChange={v=>upd(dia.id,"equipamento",v)}
                       precos={precosMaquina} opcoes={tiposEquip}/>
                   </div>
-                  <Field label="Serviço Executado" value={dia.servico} onChange={v=>upd(dia.id,"servico",v)} placeholder="Ex: CARREGAMENTO"/>
+                  <div>
+                    <Label>Serviço Executado</Label>
+                    {/* Lista de serviços padrão. "OUTRO (DIGITAR)" libera campo livre. */}
+                    <Sel
+                      value={SERVICOS_PADRAO.includes(dia.servico) || dia.servico==="" ? (dia.servico||SERVICOS_PADRAO[0]) : "OUTRO (DIGITAR)"}
+                      onChange={v=>{
+                        if(v==="OUTRO (DIGITAR)") upd(dia.id,"servico","__OUTRO__");
+                        else upd(dia.id,"servico",v);
+                      }}
+                      options={SERVICOS_PADRAO}/>
+                    {/* Campo livre só aparece quando escolhe OUTRO */}
+                    {(dia.servico==="__OUTRO__" || (!SERVICOS_PADRAO.includes(dia.servico) && dia.servico!=="")) &&
+                      <input
+                        value={dia.servico==="__OUTRO__"?"":dia.servico}
+                        placeholder="Digite o serviço"
+                        onChange={e=>upd(dia.id,"servico",e.target.value)}
+                        style={{width:"100%",boxSizing:"border-box",border:`1.5px solid ${C.gold}`,
+                          borderRadius:6,padding:"9px 12px",fontSize:13,fontFamily:"inherit",
+                          outline:"none",background:C.white,marginTop:8}}/>}
+                  </div>
                 </div>
                 <div style={{marginTop:14}}>
                   <Field label="Obra" value={dia.obra} onChange={v=>upd(dia.id,"obra",v)} placeholder={fornecedor.obra}/>
@@ -1457,7 +1531,7 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
             <InfoCell label="Local" value={d.local}/>
             <InfoCell label="Operador" value={d.operador}/>
             <InfoCell label="Equipamento" value={d.equipamento}/>
-            <InfoCell label="Serviço" value={d.servico}/>
+            <InfoCell label="Serviço" value={d.servico==="__OUTRO__"?"":d.servico}/>
             <InfoCell label="Obra" value={d.obra||fornecedor.obra}/>
           </div>
           {d.descritivo&&<div style={{background:C.sand,borderRadius:8,padding:"12px 16px",
