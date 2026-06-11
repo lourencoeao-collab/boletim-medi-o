@@ -936,7 +936,7 @@ const initialDia=()=>({
   id:uid(), data:"", clima_manha:"SOL", clima_tarde:"SOL",
   cond_manha:"ESTÁVEL", cond_tarde:"ESTÁVEL",
   operador:"", equipamento:EQUIPAMENTOS[0],
-  local:"", servico:"", obra:"", descritivo:"", status:"CONCLUÍDO",
+  local:"", servico:SERVICOS_PADRAO[0], obra:"", descritivo:"", status:"CONCLUÍDO",
   entrada:"08:00", almoco_saida:"12:00", almoco_retorno:"13:00", saida:"17:00",
   observacoes:"", fotos:[],
 });
@@ -1051,6 +1051,13 @@ function LancamentoScreen({ fornecedor, config, dias, setDias, onNext, onBack, p
   };
 
   const dia=dias.find(d=>d.id===ativo);
+
+  // Corrige dias antigos que ficaram com serviço vazio: assume a 1ª opção
+  useEffect(()=>{
+    if(dia && dia.servico==="") upd(dia.id,"servico",SERVICOS_PADRAO[0]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[ativo]);
+
   const totalMes=dias.reduce((a,d)=>a+calcHoras(d.entrada,d.almoco_saida,d.almoco_retorno,d.saida),0);
 
   const saldoPorEq=fornecedor.equipamentos.map(eq=>{
