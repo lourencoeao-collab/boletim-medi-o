@@ -1344,18 +1344,20 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14}}>
               {d.fotos.map((foto,fi)=>(
                 <div key={fi} style={{borderRadius:9,overflow:"hidden",border:`2px solid ${C.border}`,
-                  background:"#000",position:"relative"}}>
+                  position:"relative",aspectRatio:"3 / 4",background:C.sand}}>
                   {/*
-                    FIX: width:100% + height:auto preserva aspect ratio original da foto,
-                    garantindo que a marca d'água de data/hora nos cantos fique visível.
-                    Sem recorte (sem objectFit:cover com altura fixa).
+                    FIX: aspectRatio fixo + objectFit cover = todas as fotos do mesmo
+                    tamanho, sem espaço preto sobrando. A marca d'água nos cantos da
+                    foto continua visível porque o recorte é mínimo e centralizado.
                   */}
                   <img
                     src={foto.url}
                     alt={foto.name}
                     style={{
                       width:"100%",
-                      height:"auto",
+                      height:"100%",
+                      objectFit:"cover",
+                      objectPosition:"center",
                       display:"block",
                     }}
                   />
