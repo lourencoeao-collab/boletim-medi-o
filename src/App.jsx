@@ -1253,8 +1253,14 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
           break-before: auto;
           page-break-before: auto;
         }
-        /* Garante que fotos e assinaturas não quebrem isoladas (paisagem cabe mais) */
-        .folha-diaria img { max-height: 210px; object-fit: cover; }
+        /* O registro fotográfico de cada dia vai em folha separada */
+        .folha-fotos {
+          break-before: page;
+          page-break-before: always;
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        .folha-fotos img, .folha-diaria img { max-height: 230px; object-fit: cover; }
         /* Compacta a folha diária para caber cabeçalho+dados+fotos+assinaturas em 1 página */
         .folha-diaria { font-size: 11px; }
         .folha-diaria > div:first-child { padding: 10px 18px !important; }
@@ -1328,7 +1334,7 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
         <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
           <thead>
             <tr>
-              {["Nº","Data","Dia da Semana","Local","Equipamento","Operador","Entrada","Saída","Horas","Valor (R$)","Status"].map(h=>(
+              {["Data","Local","Equipamento","Entrada","Saída","Horas","Valor (R$)","Status"].map(h=>(
                 <th key={h} style={{background:C.navy,color:"#fff",padding:"10px 12px",textAlign:"left",
                   fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.5px",whiteSpace:"nowrap"}}>{h}</th>
               ))}
@@ -1339,12 +1345,9 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
               const h=calcHoras(d.entrada,d.almoco_saida,d.almoco_retorno,d.saida);
               const valor=h*getPreco(d.equipamento,precosMaquina);
               return <tr key={d.id} style={{background:i%2===0?C.white:C.sand}}>
-                <td style={T.td}>{String(i+1).padStart(2,"0")}</td>
                 <td style={T.td}>{fmtData(d.data)}</td>
-                <td style={T.td}>{getDiaSem(d.data)}</td>
                 <td style={T.td}>{d.local||"—"}</td>
                 <td style={T.td}>{d.equipamento||"—"}</td>
-                <td style={T.td}>{d.operador||"—"}</td>
                 <td style={{...T.td,textAlign:"center"}}>{d.entrada}</td>
                 <td style={{...T.td,textAlign:"center"}}>{d.saida}</td>
                 <td style={{...T.td,textAlign:"center",fontWeight:800,color:C.navy}}>{fmtHora(h)}</td>
@@ -1353,7 +1356,7 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
               </tr>;
             })}
             <tr style={{background:"#F0F4FF"}}>
-              <td colSpan={8} style={{...T.td,fontWeight:800,textAlign:"right",color:C.navy,
+              <td colSpan={5} style={{...T.td,fontWeight:800,textAlign:"right",color:C.navy,
                 fontSize:11,textTransform:"uppercase"}}>Subtotal</td>
               <td style={{...T.td,fontWeight:900,color:C.navy,textAlign:"center",fontSize:14}}>{fmtHora(totalHoras)}</td>
               <td style={{...T.td,fontWeight:900,textAlign:"right",fontSize:14}}>R$ {fmtBRL(totalValor)}</td>
@@ -1368,7 +1371,8 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
     {dias.map((d,i)=>{
       const h=calcHoras(d.entrada,d.almoco_saida,d.almoco_retorno,d.saida);
       const valorDia=h*getPreco(d.equipamento,precosMaquina);
-      return <div key={d.id} className="folha-diaria" style={{background:C.white,borderRadius:12,border:`1px solid ${C.border}`,
+      return <div key={d.id+"-wrap"}>
+      <div className="folha-diaria" style={{background:C.white,borderRadius:12,border:`1px solid ${C.border}`,
         marginBottom:24,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>
         <div style={{background:`linear-gradient(135deg,${C.navy},${C.navyMid})`,padding:"18px 26px",
           display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -1433,39 +1437,6 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
             ⚠ <strong>Ocorrências:</strong> {d.observacoes}
           </div>}
 
-          {/* ── FOTOS: aspect ratio preservado ─────────────────────────── */}
-          {d.fotos.length>0&&<div style={{marginTop:20}}>
-            <div style={{fontWeight:800,fontSize:12,color:C.navy,textTransform:"uppercase",letterSpacing:"1px",
-              borderBottom:`2px solid ${C.navy}`,paddingBottom:8,marginBottom:14}}>
-              📷 Registro Fotográfico ({d.fotos.length}/6)
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14,alignItems:"start"}}>
-              {d.fotos.map((foto,fi)=>(
-                <div key={fi} style={{borderRadius:9,overflow:"hidden",border:`2px solid ${C.border}`,
-                  position:"relative",background:"#fff"}}>
-                  {/*
-                    Foto em tamanho original (height:auto), sem recorte.
-                    Fundo branco para não destoar quando a proporção varia.
-                    Marca d'água nos cantos fica 100% visível.
-                  */}
-                  <img
-                    src={foto.url}
-                    alt={foto.name}
-                    style={{
-                      width:"100%",
-                      height:"auto",
-                      display:"block",
-                    }}
-                  />
-                  <div style={{position:"absolute",top:8,left:8,background:"rgba(0,0,0,0.6)",
-                    color:"#fff",borderRadius:4,padding:"2px 8px",fontSize:11,fontWeight:800}}>
-                    {fi+1}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>}
-
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:40,marginTop:32}}>
             {[`Encarregado: ${fornecedor.encarregado||"________________________"}`,
               "Fiscal da Prefeitura: ________________________"].map((t,ti)=>(
@@ -1476,6 +1447,45 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
             ))}
           </div>
         </div>
+      </div>{/* fim do Relatório Diário (folha 1 do dia) */}
+
+      {/* ── SEGUNDA FOLHA DO DIA: Registro Fotográfico ── */}
+      {d.fotos.length>0&&<div key={d.id+"-fotos"} className="folha-fotos" style={{background:C.white,borderRadius:12,
+        border:`1px solid ${C.border}`,marginBottom:24,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>
+        <div style={{background:`linear-gradient(135deg,${C.navy},${C.navyMid})`,padding:"18px 26px",
+          display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <div style={{fontWeight:900,fontSize:14,color:"#fff",textTransform:"uppercase",letterSpacing:"1px"}}>
+              Registro Fotográfico
+            </div>
+            <div style={{fontSize:13,color:"rgba(255,255,255,0.6)",marginTop:3,textTransform:"capitalize"}}>
+              {d.data?new Date(d.data+"T12:00").toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"long",year:"numeric"}):"—"}
+            </div>
+          </div>
+          <div style={{background:"rgba(255,255,255,0.12)",borderRadius:7,padding:"8px 16px",
+            fontSize:13,fontWeight:800,color:"#fff",border:"1px solid rgba(255,255,255,0.2)"}}>
+            FOLHA Nº {String(i+1).padStart(2,"0")} · FOTOS
+          </div>
+        </div>
+        <div style={{padding:"22px 26px"}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14,alignItems:"start"}}>
+            {d.fotos.map((foto,fi)=>(
+              <div key={fi} style={{borderRadius:9,overflow:"hidden",border:`2px solid ${C.border}`,
+                position:"relative",background:"#fff"}}>
+                <img
+                  src={foto.url}
+                  alt={foto.name}
+                  style={{width:"100%",height:"auto",display:"block"}}
+                />
+                <div style={{position:"absolute",top:8,left:8,background:"rgba(0,0,0,0.6)",
+                  color:"#fff",borderRadius:4,padding:"2px 8px",fontSize:11,fontWeight:800}}>
+                  {fi+1}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>}
       </div>;
     })}
 
