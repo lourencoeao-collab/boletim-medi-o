@@ -48,7 +48,6 @@ const lsSet = (key, val) => {
 const lsKeyDias    = (fId, mes, ano) => `bmedicao_dias_${fId}_${mes}_${ano}`;
 const lsKeyConfig  = (fId) => `${LS_CONFIG}_${fId}`;
 
-
 const STATUS_COLOR = {
   "CONCLUÍDO":    {bg:"#dcfce7",color:"#166534",dot:"#22c55e"},
   "EM ANDAMENTO": {bg:"#fef9c3",color:"#854d0e",dot:"#eab308"},
@@ -1119,10 +1118,6 @@ function LancamentoScreen({ fornecedor, config, dias, setDias, onNext, onBack })
                                 border:"none",borderRadius:20,width:22,height:22,fontSize:11,cursor:"pointer"}}>✕</button>
                             <div style={{position:"absolute",top:5,left:5,background:"rgba(0,0,0,0.6)",color:"#fff",
                               borderRadius:4,padding:"1px 7px",fontSize:10,fontWeight:800}}>{idx+1}</div>
-                            {/* Timestamp visível */}
-                            {f.timestamp&&<div style={{position:"absolute",bottom:0,left:0,right:0,
-                              background:"rgba(0,0,0,0.55)",color:"#fff",fontSize:9,fontWeight:600,
-                              padding:"3px 7px",textAlign:"right"}}>{f.timestamp}</div>}
                           </div>
                         </div>
                       ):(
@@ -1368,11 +1363,6 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
                     color:"#fff",borderRadius:4,padding:"2px 8px",fontSize:11,fontWeight:800}}>
                     {fi+1}
                   </div>
-                  {foto.timestamp&&<div style={{
-                    position:"absolute",bottom:0,left:0,right:0,
-                    background:"rgba(0,0,0,0.5)",color:"#fff",
-                    fontSize:10,fontWeight:600,padding:"4px 8px",textAlign:"right",
-                  }}>{foto.timestamp}</div>}
                 </div>
               ))}
             </div>
