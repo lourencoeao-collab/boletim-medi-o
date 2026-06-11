@@ -36,13 +36,45 @@ const getDiaSem= d => d ? DIAS_SEMANA[new Date(d+"T12:00").getDay()] : "";
 const getPreco = (eq,pm) => parseFloat((pm||PRECO_DEFAULT)[eq])||0;
 const uid      = () => Date.now().toString(36)+Math.random().toString(36).slice(2);
 
+/* Comprime uma imagem (File) e devolve um dataURL JPEG leve.
+   Redimensiona para no máximo maxW de largura mantendo proporção,
+   e aplica qualidade JPEG. Reduz o tamanho em ~90% preservando a
+   marca d'água de data/hora gravada na foto. */
+const comprimirImagem = (file, maxW = 1280, quality = 0.7) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const escala = img.width > maxW ? maxW / img.width : 1;
+      const w = Math.round(img.width * escala);
+      const h = Math.round(img.height * escala);
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+      // JPEG comprimido — fundo branco para PNGs transparentes
+      try {
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      } catch (err) {
+        reject(err);
+      }
+    };
+    img.onerror = reject;
+    img.src = e.target.result;
+  };
+  reader.onerror = reject;
+  reader.readAsDataURL(file);
+});
+
 const lsGet = (key, def) => {
   if (typeof window === "undefined") return def;
   try { const v=localStorage.getItem(key); return v?JSON.parse(v):def; } catch{ return def; }
 };
+// Retorna true se salvou, false se falhou (ex: limite de armazenamento estourado)
 const lsSet = (key, val) => {
-  if (typeof window === "undefined") return;
-  try { localStorage.setItem(key, JSON.stringify(val)); } catch{}
+  if (typeof window === "undefined") return false;
+  try { localStorage.setItem(key, JSON.stringify(val)); return true; } catch { return false; }
 };
 
 const lsKeyDias    = (fId, mes, ano) => `bmedicao_dias_${fId}_${mes}_${ano}`;
@@ -834,8 +866,9 @@ function LancamentoScreen({ fornecedor, config, dias, setDias, onNext, onBack })
 
   // Salva automaticamente e atualiza indicador
   const salvar = useCallback((novos) => {
-    lsSet(lsKeyDias(fornecedor.id, config.mes, config.ano), novos);
-    setUltimoSalvo(new Date());
+    const ok = lsSet(lsKeyDias(fornecedor.id, config.mes, config.ano), novos);
+    if (ok) setUltimoSalvo(new Date());
+    return ok;
   }, [fornecedor.id, config.mes, config.ano]);
 
   const addDia=()=>{
@@ -864,18 +897,28 @@ function LancamentoScreen({ fornecedor, config, dias, setDias, onNext, onBack })
   };
 
   const handleFotos=(id,files)=>{
+    const now=new Date();
+    const ts=now.toLocaleDateString("pt-BR")+" "+now.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
     Array.from(files).forEach(file=>{
-      const now=new Date();
-      const ts=now.toLocaleDateString("pt-BR")+" "+now.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
-      const reader=new FileReader();
-      reader.onload=e=>{
-        setDias(p=>{
-          const novos=p.map(d=>d.id===id?{...d,fotos:d.fotos.length<6?[...d.fotos,{name:file.name,url:e.target.result,caption:"",timestamp:ts}]:d.fotos}:d);
-          salvar(novos);
-          return novos;
+      // Comprime antes de salvar — reduz ~90% do tamanho e evita estourar o armazenamento
+      comprimirImagem(file, 1280, 0.7)
+        .then(urlComprimida=>{
+          setDias(p=>{
+            const novos=p.map(d=>d.id===id
+              ? {...d, fotos: d.fotos.length<6
+                  ? [...d.fotos,{name:file.name,url:urlComprimida,caption:"",timestamp:ts}]
+                  : d.fotos}
+              : d);
+            const ok=salvar(novos);
+            if(ok===false){
+              alert("⚠ Não foi possível salvar a foto: o armazenamento do navegador está cheio.\n\nDica: gere o boletim (PDF/Excel) deste mês e depois remova fotos de meses antigos para liberar espaço.");
+            }
+            return novos;
+          });
+        })
+        .catch(()=>{
+          alert("⚠ Erro ao processar esta imagem. Tente outra foto.");
         });
-      };
-      reader.readAsDataURL(file);
     });
   };
 
