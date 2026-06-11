@@ -896,6 +896,7 @@ function LancamentoScreen({ fornecedor, config, dias, setDias, onNext, onBack })
   // Valida todos os dias e retorna lista de problemas encontrados
   const validarDias = () => {
     const erros = [];
+    const datasVistas = {};
     dias.forEach((d, i) => {
       const ref = d.data ? fmtData(d.data) : `Dia ${i+1}`;
       const faltando = [];
@@ -907,6 +908,11 @@ function LancamentoScreen({ fornecedor, config, dias, setDias, onNext, onBack })
       if (h <= 0) faltando.push("horários válidos");
       if (!d.fotos || d.fotos.length < 6) faltando.push(`6 fotos (tem ${d.fotos?d.fotos.length:0})`);
       if (faltando.length) erros.push(`• ${ref}: falta ${faltando.join(", ")}`);
+      // Detecta datas duplicadas
+      if (d.data) {
+        if (datasVistas[d.data]) erros.push(`• ${ref}: data repetida (já lançada em outro dia)`);
+        datasVistas[d.data] = true;
+      }
     });
     return erros;
   };
@@ -1102,7 +1108,17 @@ function LancamentoScreen({ fornecedor, config, dias, setDias, onNext, onBack })
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14,marginBottom:14}}>
                   <div>
                     <Label>Data</Label>
-                    <input type="date" value={dia.data} onChange={e=>upd(dia.id,"data",e.target.value)}
+                    <input type="date" value={dia.data}
+                      onChange={e=>{
+                        const novaData=e.target.value;
+                        // Impede lançar a mesma data em mais de um dia
+                        const duplicada = novaData && dias.some(o=>o.id!==dia.id && o.data===novaData);
+                        if(duplicada){
+                          alert(`⚠ A data ${fmtData(novaData)} já foi lançada em outro dia.\n\nCada data só pode ser lançada uma vez.`);
+                          return;
+                        }
+                        upd(dia.id,"data",novaData);
+                      }}
                       style={{width:"100%",boxSizing:"border-box",border:`1.5px solid ${C.border}`,
                         borderRadius:6,padding:"9px 12px",fontSize:13,fontFamily:"inherit",outline:"none",background:C.white}}/>
                     {dia.data&&<span style={{fontSize:11,color:C.green,fontWeight:700,marginTop:4,display:"block"}}>{getDiaSem(dia.data)}</span>}
