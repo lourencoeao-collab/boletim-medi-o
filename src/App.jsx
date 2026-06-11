@@ -1267,10 +1267,24 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
           word-break: break-word;
         }
 
-        /* O resumo inteiro não pode ser cortado entre páginas */
+        /* Cabeçalho + métricas: ficam juntos, não cortam */
         .bloco-resumo {
           break-inside: avoid;
           page-break-inside: avoid;
+        }
+
+        /* Tabela do resumo: começa em folha própria; pode quebrar entre
+           páginas se houver muitos dias, mas sem cortar linhas no meio */
+        .bloco-tabela {
+          break-before: page;
+          page-break-before: always;
+        }
+        .bloco-tabela tr {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        .bloco-tabela thead {
+          display: table-header-group; /* repete cabeçalho da tabela em cada folha */
         }
 
         /* Cada relatório diário sai em sua própria folha, completo */
@@ -1372,7 +1386,11 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
       <MetricCard icon="📅" label="Dias Trabalhados" value={`${dias.length} dias`} accent={C.green}/>
       <MetricCard icon="💰" label="Valor Total" value={`R$ ${fmtBRL(totalValor)}`} accent={C.gold}/>
     </div>
+    </div>{/* fim .bloco-resumo (cabeçalho + métricas) */}
 
+    {/* ── RESUMO DAS MEDIÇÕES: folha própria, pode quebrar entre páginas
+         sem cortar linhas (suporta até 30 dias) ── */}
+    <div className="bloco-tabela">
     <Card>
       <SectionHead icon="📋" title="Resumo das Medições"/>
       <div className="tabela-scroll" style={{overflowX:"auto"}}>
@@ -1413,7 +1431,7 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
         </table>
       </div>
     </Card>
-    </div>{/* fim .bloco-resumo */}
+    </div>{/* fim .bloco-tabela */}
 
     {dias.map((d,i)=>{
       const h=calcHoras(d.entrada,d.almoco_saida,d.almoco_retorno,d.saida);
