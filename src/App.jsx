@@ -1172,26 +1172,47 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
     ─────────────────────────────────────────────────────────────────── */}
     <style>{`
       @media print {
-        @page { margin: 12mm; }
+        @page { size: A4 portrait; margin: 10mm; }
         .no-print { display: none !important; }
         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+        /* Remove qualquer rolagem horizontal na impressão (tabela inteira visível) */
+        .tabela-scroll {
+          overflow: visible !important;
+        }
+        .tabela-scroll table {
+          width: 100% !important;
+          table-layout: fixed;
+          font-size: 8.5px !important;
+        }
+        .tabela-scroll th, .tabela-scroll td {
+          padding: 4px 5px !important;
+          white-space: normal !important;
+          word-break: break-word;
+        }
+
         /* O resumo inteiro não pode ser cortado entre páginas */
         .bloco-resumo {
           break-inside: avoid;
           page-break-inside: avoid;
         }
-        /* Cada relatório diário sai em sua própria folha */
+
+        /* Cada relatório diário sai em sua própria folha, completo */
         .folha-diaria {
           break-before: page;
           page-break-before: always;
           break-inside: avoid;
           page-break-inside: avoid;
         }
-        /* A primeira folha diária não precisa forçar quebra extra */
         .folha-diaria:first-of-type {
           break-before: auto;
           page-break-before: auto;
         }
+        /* Garante que fotos e assinaturas não quebrem isoladas */
+        .folha-diaria img { max-height: 175px; object-fit: cover; }
+        /* Compacta a folha diária para caber cabeçalho+dados+fotos+assinaturas em 1 página */
+        .folha-diaria { font-size: 11px; }
+        .folha-diaria > div:first-child { padding: 10px 18px !important; }
       }
     `}</style>
     <div style={S.topBar} className="no-print">
@@ -1258,7 +1279,7 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
 
     <Card>
       <SectionHead icon="📋" title="Resumo das Medições"/>
-      <div style={{overflowX:"auto"}}>
+      <div className="tabela-scroll" style={{overflowX:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
           <thead>
             <tr>
