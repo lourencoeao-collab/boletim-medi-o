@@ -1260,21 +1260,21 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
           break-inside: avoid;
           page-break-inside: avoid;
         }
-        /* Fotos na impressão: 2 colunas x 3 linhas, sem cortar a marca d'água */
+        /* Fotos na impressão: 3 colunas x 2 linhas em 1 folha, sem cortar a marca d'água */
         .folha-fotos .grid-fotos {
           display: grid !important;
-          grid-template-columns: 1fr 1fr !important;
-          gap: 8px !important;
+          grid-template-columns: 1fr 1fr 1fr !important;
+          gap: 6px !important;
         }
         .folha-fotos img {
           width: 100% !important;
           height: auto !important;
-          max-height: 80mm !important;
+          max-height: 82mm !important;
           object-fit: contain !important;
           background: #fff;
         }
         .folha-diaria img { max-height: 200px; object-fit: cover; }
-        .folha-fotos > div:last-child { padding: 12px 18px !important; }
+        .folha-fotos > div:last-child { padding: 10px 16px !important; }
         /* Compacta a folha diária para caber cabeçalho+dados+fotos+assinaturas em 1 página */
         .folha-diaria { font-size: 11px; }
         .folha-diaria > div:first-child { padding: 10px 18px !important; }
