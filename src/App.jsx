@@ -132,7 +132,7 @@ const exportarExcel = (fornecedor, config, dias) => {
     ["Mês/Ano", `${config.mes}/${config.ano}`],
     ["Vigência", config.vigencia || "—"],
     [""],
-    ["Nº","Data","Dia da Semana","Local","Equipamento","Operador","Entrada","Saída Almoço","Retorno Almoço","Saída","Total Horas","Horas (decimal)","Valor R$","Status","Serviço","Obra","Descritivo","Clima Manhã","Cond. Manhã","Clima Tarde","Cond. Tarde","Observações"],
+    ["Nº","Data","Dia da Semana","Local da Obra","Equipamento","Operador","Entrada","Saída Almoço","Retorno Almoço","Saída","Total Horas","Horas (decimal)","Valor R$","Status","Serviço","Descritivo","Clima Manhã","Cond. Manhã","Clima Tarde","Cond. Tarde","Observações"],
   ];
 
   let totalH = 0, totalV = 0;
@@ -156,7 +156,6 @@ const exportarExcel = (fornecedor, config, dias) => {
       `R$ ${fmtBRL(v)}`,
       d.status,
       d.servico==="__OUTRO__" ? "" : (d.servico || ""),
-      d.obra || "",
       d.descritivo || "",
       d.clima_manha,
       d.cond_manha,
@@ -1123,7 +1122,8 @@ function LancamentoScreen({ fornecedor, config, dias, setDias, onNext, onBack })
                         borderRadius:6,padding:"9px 12px",fontSize:13,fontFamily:"inherit",outline:"none",background:C.white}}/>
                     {dia.data&&<span style={{fontSize:11,color:C.green,fontWeight:700,marginTop:4,display:"block"}}>{getDiaSem(dia.data)}</span>}
                   </div>
-                  <Field label="Local / Endereço" value={dia.local} onChange={v=>upd(dia.id,"local",v)}/>
+                  <Field label="Local da Obra" value={dia.local} onChange={v=>upd(dia.id,"local",v)}
+                    placeholder="Ex: Rua das Flores, Bairro Centro"/>
                   <Field label="Operador" value={dia.operador} onChange={v=>upd(dia.id,"operador",v)}/>
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
@@ -1153,10 +1153,6 @@ function LancamentoScreen({ fornecedor, config, dias, setDias, onNext, onBack })
                           borderRadius:6,padding:"9px 12px",fontSize:13,fontFamily:"inherit",
                           outline:"none",background:C.white,marginTop:8}}/>}
                   </div>
-                </div>
-                <div style={{marginTop:14}}>
-                  <Field label="Local da Obra" value={dia.obra} onChange={v=>upd(dia.id,"obra",v)}
-                    placeholder="Ex: Rua das Flores, Bairro Centro"/>
                 </div>
                 <div style={{marginTop:14}}>
                   <Label>Descritivo das Atividades</Label>
@@ -1545,11 +1541,11 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
         <div style={{padding:"22px 26px"}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:16}}>
             <InfoCell label="Cliente" value={fornecedor.cliente||"Prefeitura Municipal de Extrema"}/>
-            <InfoCell label="Local" value={d.local}/>
+            <InfoCell label="Local da Obra" value={d.local}/>
             <InfoCell label="Operador" value={d.operador}/>
             <InfoCell label="Equipamento" value={d.equipamento}/>
             <InfoCell label="Serviço" value={d.servico==="__OUTRO__"?"":d.servico}/>
-            <InfoCell label="Local da Obra" value={d.obra||fornecedor.obra}/>
+            <InfoCell label="Status" value={d.status}/>
           </div>
           {d.descritivo&&<div style={{background:C.sand,borderRadius:8,padding:"12px 16px",
             marginBottom:16,border:`1px solid ${C.border}`}}>
