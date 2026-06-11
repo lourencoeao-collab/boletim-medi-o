@@ -1221,6 +1221,34 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
         .no-print { display: none !important; }
         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
+        /* ── ECONOMIA DE TINTA: fundos escuros viram branco na impressão ── */
+        /* Cabeçalho do boletim e cabeçalhos das folhas (eram azul-escuro) */
+        .print-header {
+          background: #fff !important;
+          color: ${C.navy} !important;
+          border: 2px solid ${C.navy} !important;
+          box-shadow: none !important;
+        }
+        .print-header * {
+          color: ${C.navy} !important;
+        }
+        .print-header .print-icon {
+          background: #fff !important;
+          border: 1.5px solid ${C.gold} !important;
+        }
+        /* Campos do cabeçalho ganham borda visível sobre branco */
+        .print-field {
+          background: #f5f7fa !important;
+          border: 1px solid ${C.border} !important;
+        }
+        /* Cabeçalhos de tabela (azul) viram cinza claro com texto escuro */
+        .tabela-scroll th {
+          background: #e8edf5 !important;
+          color: ${C.navy} !important;
+        }
+        /* Metric cards: remove sombras e mantém borda fina */
+        .print-metric { box-shadow: none !important; }
+
         /* Remove qualquer rolagem horizontal na impressão (tabela inteira visível) */
         .tabela-scroll {
           overflow: visible !important;
@@ -1300,11 +1328,11 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
 
     {/* ── PRIMEIRA FOLHA: cabeçalho + métricas + resumo (não corta) ── */}
     <div className="bloco-resumo">
-    <div style={{background:`linear-gradient(135deg,${C.navy} 0%,${C.navyMid} 100%)`,borderRadius:12,
+    <div className="print-header" style={{background:`linear-gradient(135deg,${C.navy} 0%,${C.navyMid} 100%)`,borderRadius:12,
       padding:"28px 36px",marginBottom:20,boxShadow:"0 4px 20px rgba(11,31,58,0.25)"}}>
       <div style={{display:"flex",alignItems:"center",gap:20,marginBottom:22,paddingBottom:20,
         borderBottom:"1px solid rgba(255,255,255,0.15)"}}>
-        <div style={{width:60,height:60,borderRadius:12,background:`linear-gradient(135deg,${C.gold},${C.goldLt})`,
+        <div className="print-icon" style={{width:60,height:60,borderRadius:12,background:`linear-gradient(135deg,${C.gold},${C.goldLt})`,
           display:"flex",alignItems:"center",justifyContent:"center",fontSize:28}}>⚙</div>
         <div>
           <h1 style={{margin:0,fontSize:24,fontWeight:900,color:"#fff",letterSpacing:"-0.5px",textTransform:"uppercase"}}>
@@ -1326,7 +1354,7 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
           ["Cliente",fornecedor.cliente||"Prefeitura Municipal de Extrema"],
           ["Obra",fornecedor.obra],["Encarregado",fornecedor.encarregado],
           ["Vigência",config.vigencia]].map(([lbl,val])=>(
-          <div key={lbl} style={{padding:"10px 14px",background:"rgba(255,255,255,0.07)",
+          <div key={lbl} className="print-field" style={{padding:"10px 14px",background:"rgba(255,255,255,0.07)",
             borderRadius:7,border:"1px solid rgba(255,255,255,0.1)"}}>
             <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.45)",textTransform:"uppercase",
               letterSpacing:"0.8px",marginBottom:3}}>{lbl}</div>
@@ -1388,7 +1416,7 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
       return <div key={d.id+"-wrap"}>
       <div className="folha-diaria" style={{background:C.white,borderRadius:12,border:`1px solid ${C.border}`,
         marginBottom:24,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>
-        <div style={{background:`linear-gradient(135deg,${C.navy},${C.navyMid})`,padding:"18px 26px",
+        <div className="print-header" style={{background:`linear-gradient(135deg,${C.navy},${C.navyMid})`,padding:"18px 26px",
           display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
             <div style={{fontWeight:900,fontSize:14,color:"#fff",textTransform:"uppercase",letterSpacing:"1px"}}>
@@ -1466,7 +1494,7 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
       {/* ── SEGUNDA FOLHA DO DIA: Registro Fotográfico ── */}
       {d.fotos.length>0&&<div key={d.id+"-fotos"} className="folha-fotos" style={{background:C.white,borderRadius:12,
         border:`1px solid ${C.border}`,marginBottom:24,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>
-        <div style={{background:`linear-gradient(135deg,${C.navy},${C.navyMid})`,padding:"18px 26px",
+        <div className="print-header" style={{background:`linear-gradient(135deg,${C.navy},${C.navyMid})`,padding:"18px 26px",
           display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
             <div style={{fontWeight:900,fontSize:14,color:"#fff",textTransform:"uppercase",letterSpacing:"1px"}}>
