@@ -1164,8 +1164,37 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
     return a+(h*getPreco(d.equipamento,precosMaquina));
   },0);
 
-  return <div style={S.page}>
-    <div style={S.topBar}>
+  return <div style={S.page} className="boletim-print-area">
+    {/* ── Regras de impressão ────────────────────────────────────────────
+        • Esconde a barra de botões na impressão
+        • Mantém o "Resumo das Medições" inteiro numa folha (sem cortar)
+        • Cada "Relatório Diário de Obra" começa em nova folha e não corta
+    ─────────────────────────────────────────────────────────────────── */}
+    <style>{`
+      @media print {
+        @page { margin: 12mm; }
+        .no-print { display: none !important; }
+        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        /* O resumo inteiro não pode ser cortado entre páginas */
+        .bloco-resumo {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        /* Cada relatório diário sai em sua própria folha */
+        .folha-diaria {
+          break-before: page;
+          page-break-before: always;
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        /* A primeira folha diária não precisa forçar quebra extra */
+        .folha-diaria:first-of-type {
+          break-before: auto;
+          page-break-before: auto;
+        }
+      }
+    `}</style>
+    <div style={S.topBar} className="no-print">
       <Btn variant="secondary" onClick={onBack} style={{padding:"7px 14px",fontSize:12}}>← Editar</Btn>
       <div style={{display:"flex",alignItems:"center",gap:10}}>
         <span style={{fontSize:20}}>📊</span>
@@ -1181,8 +1210,10 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
         <Btn variant="gold" onClick={()=>window.print()} style={{padding:"9px 18px",fontSize:13}}>🖨 Imprimir / PDF</Btn>
       </div>
     </div>
-    <StepBar step={3}/>
+    <div className="no-print"><StepBar step={3}/></div>
 
+    {/* ── PRIMEIRA FOLHA: cabeçalho + métricas + resumo (não corta) ── */}
+    <div className="bloco-resumo">
     <div style={{background:`linear-gradient(135deg,${C.navy} 0%,${C.navyMid} 100%)`,borderRadius:12,
       padding:"28px 36px",marginBottom:20,boxShadow:"0 4px 20px rgba(11,31,58,0.25)"}}>
       <div style={{display:"flex",alignItems:"center",gap:20,marginBottom:22,paddingBottom:20,
@@ -1266,11 +1297,12 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
         </table>
       </div>
     </Card>
+    </div>{/* fim .bloco-resumo */}
 
     {dias.map((d,i)=>{
       const h=calcHoras(d.entrada,d.almoco_saida,d.almoco_retorno,d.saida);
       const valorDia=h*getPreco(d.equipamento,precosMaquina);
-      return <div key={d.id} style={{background:C.white,borderRadius:12,border:`1px solid ${C.border}`,
+      return <div key={d.id} className="folha-diaria" style={{background:C.white,borderRadius:12,border:`1px solid ${C.border}`,
         marginBottom:24,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>
         <div style={{background:`linear-gradient(135deg,${C.navy},${C.navyMid})`,padding:"18px 26px",
           display:"flex",justifyContent:"space-between",alignItems:"center"}}>
