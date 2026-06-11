@@ -1260,7 +1260,20 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
           break-inside: avoid;
           page-break-inside: avoid;
         }
-        .folha-fotos img, .folha-diaria img { max-height: 230px; object-fit: cover; }
+        /* Fotos com altura fixa na impressão: 2 linhas de 3 cabem em 1 folha A4 paisagem */
+        .folha-fotos .grid-fotos {
+          display: grid !important;
+          grid-template-columns: 1fr 1fr 1fr !important;
+          gap: 8px !important;
+        }
+        .folha-fotos img {
+          width: 100% !important;
+          height: 72mm !important;
+          object-fit: cover !important;
+          object-position: center !important;
+        }
+        .folha-diaria img { max-height: 200px; object-fit: cover; }
+        .folha-fotos > div:last-child { padding: 12px 18px !important; }
         /* Compacta a folha diária para caber cabeçalho+dados+fotos+assinaturas em 1 página */
         .folha-diaria { font-size: 11px; }
         .folha-diaria > div:first-child { padding: 10px 18px !important; }
@@ -1468,7 +1481,7 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
           </div>
         </div>
         <div style={{padding:"22px 26px"}}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14,alignItems:"start"}}>
+          <div className="grid-fotos" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14,alignItems:"start"}}>
             {d.fotos.map((foto,fi)=>(
               <div key={fi} style={{borderRadius:9,overflow:"hidden",border:`2px solid ${C.border}`,
                 position:"relative",background:"#fff"}}>
