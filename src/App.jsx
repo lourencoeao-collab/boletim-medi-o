@@ -1367,6 +1367,18 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
     return a+(h*getPreco(d.equipamento,precosMaquina));
   },0);
 
+  // Define um nome organizado para o PDF (ex: Boletim_FLORISTERRA_Maio_2026)
+  // e dispara a impressão; restaura o título original depois.
+  const imprimirBoletim = () => {
+    const nomeLimpo = (fornecedor.nome||"Fornecedor").replace(/[^\w\s-]/g,"").trim().replace(/\s+/g,"_");
+    const nomeArquivo = `Boletim_${nomeLimpo}_${config.mes}_${config.ano}`;
+    const tituloOriginal = document.title;
+    document.title = nomeArquivo;
+    window.print();
+    // restaura após o diálogo de impressão fechar
+    setTimeout(()=>{ document.title = tituloOriginal; }, 1000);
+  };
+
   return <div style={S.page} className="boletim-print-area">
     {/* ── Regras de impressão ────────────────────────────────────────────
         • Esconde a barra de botões na impressão
@@ -1490,7 +1502,7 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
           style={{padding:"9px 18px",fontSize:13}}>
           📊 Exportar Excel
         </Btn>
-        <Btn variant="gold" onClick={()=>window.print()} style={{padding:"9px 18px",fontSize:13}}>🖨 Imprimir / PDF</Btn>
+        <Btn variant="gold" onClick={imprimirBoletim} style={{padding:"9px 18px",fontSize:13}}>🖨 Imprimir / PDF</Btn>
       </div>
     </div>
     <div className="no-print"><StepBar step={3}/></div>
