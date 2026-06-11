@@ -1341,23 +1341,21 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
               borderBottom:`2px solid ${C.navy}`,paddingBottom:8,marginBottom:14}}>
               📷 Registro Fotográfico ({d.fotos.length}/6)
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14,alignItems:"start"}}>
               {d.fotos.map((foto,fi)=>(
                 <div key={fi} style={{borderRadius:9,overflow:"hidden",border:`2px solid ${C.border}`,
-                  position:"relative",aspectRatio:"3 / 4",background:C.sand}}>
+                  position:"relative",background:"#fff"}}>
                   {/*
-                    FIX: aspectRatio fixo + objectFit cover = todas as fotos do mesmo
-                    tamanho, sem espaço preto sobrando. A marca d'água nos cantos da
-                    foto continua visível porque o recorte é mínimo e centralizado.
+                    Foto em tamanho original (height:auto), sem recorte.
+                    Fundo branco para não destoar quando a proporção varia.
+                    Marca d'água nos cantos fica 100% visível.
                   */}
                   <img
                     src={foto.url}
                     alt={foto.name}
                     style={{
                       width:"100%",
-                      height:"100%",
-                      objectFit:"cover",
-                      objectPosition:"center",
+                      height:"auto",
                       display:"block",
                     }}
                   />
