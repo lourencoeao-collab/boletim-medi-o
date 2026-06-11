@@ -1260,17 +1260,18 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
           break-inside: avoid;
           page-break-inside: avoid;
         }
-        /* Fotos com altura fixa na impressão: 2 linhas de 3 cabem em 1 folha A4 paisagem */
+        /* Fotos na impressão: 2 colunas x 3 linhas, sem cortar a marca d'água */
         .folha-fotos .grid-fotos {
           display: grid !important;
-          grid-template-columns: 1fr 1fr 1fr !important;
+          grid-template-columns: 1fr 1fr !important;
           gap: 8px !important;
         }
         .folha-fotos img {
           width: 100% !important;
-          height: 72mm !important;
-          object-fit: cover !important;
-          object-position: center !important;
+          height: auto !important;
+          max-height: 80mm !important;
+          object-fit: contain !important;
+          background: #fff;
         }
         .folha-diaria img { max-height: 200px; object-fit: cover; }
         .folha-fotos > div:last-child { padding: 12px 18px !important; }
