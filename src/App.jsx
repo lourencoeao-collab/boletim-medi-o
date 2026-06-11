@@ -1,4 +1,46 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SUPABASE — banco de dados na nuvem (fornecedores)
+═══════════════════════════════════════════════════════════════════════════ */
+const SUPABASE_URL = "https://zepxlytrkumzpeqrbfef.supabase.co";
+const SUPABASE_KEY = "sb_publishable_Xu_PLNIMvO5Gi66lDop8fA_mzS0R6DG";
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Busca todos os fornecedores do Supabase
+const sbBuscarFornecedores = async () => {
+  const { data, error } = await supabase.from("fornecedores").select("*").order("criado_em");
+  if (error) { console.error("Erro ao buscar fornecedores:", error); return []; }
+  return data || [];
+};
+
+// Salva (insere ou atualiza) um fornecedor no Supabase
+const sbSalvarFornecedor = async (f) => {
+  const registro = {
+    id: f.id, nome: f.nome, cnpj: f.cnpj, usuario: f.usuario, senha: f.senha,
+    encarregado: f.encarregado, obra: f.obra, cliente: f.cliente,
+    equipamentos: f.equipamentos,
+  };
+  const { error } = await supabase.from("fornecedores").upsert(registro);
+  if (error) { console.error("Erro ao salvar fornecedor:", error); return false; }
+  return true;
+};
+
+// Exclui um fornecedor do Supabase
+const sbExcluirFornecedor = async (id) => {
+  const { error } = await supabase.from("fornecedores").delete().eq("id", id);
+  if (error) { console.error("Erro ao excluir fornecedor:", error); return false; }
+  return true;
+};
+
+// Busca um fornecedor por usuário e senha (para login)
+const sbLoginFornecedor = async (usuario, senha) => {
+  const { data, error } = await supabase.from("fornecedores")
+    .select("*").eq("usuario", usuario.trim()).eq("senha", senha).maybeSingle();
+  if (error) { console.error("Erro no login:", error); return null; }
+  return data;
+};
 
 /* ═══════════════════════════════════════════════════════════════════════════
    CONSTANTES
@@ -33,7 +75,6 @@ const PRECO_DEFAULT = {
   "CAMINHÃO 14³":220,"TRATOR DE ESTEIRA":434.09
 };
 const SENHA_GESTOR = "extrema2026";
-const LS_FORNECEDORES = "bmedicao_fornecedores";
 const LS_CONFIG       = "bmedicao_config";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -381,14 +422,17 @@ function LoginScreen({ onLogin }) {
   const [senha,setSenha]=useState("");
   const [erro,setErro]=useState("");
 
-  const confirmar = () => {
+  const [carregando,setCarregando]=useState(false);
+
+  const confirmar = async () => {
     setErro("");
     if(perfil==="gestor"){
       if(senha===SENHA_GESTOR) onLogin("gestor",null);
       else setErro("Senha incorreta.");
     } else {
-      const fornecedores = lsGet(LS_FORNECEDORES,[]);
-      const f = fornecedores.find(f=>f.usuario===usuario.trim()&&f.senha===senha);
+      setCarregando(true);
+      const f = await sbLoginFornecedor(usuario, senha);
+      setCarregando(false);
       if(f) onLogin("fornecedor",f);
       else setErro("Usuário ou senha inválidos.");
     }
@@ -467,7 +511,9 @@ function LoginScreen({ onLogin }) {
             </div>
           </div>
           {erro&&<p style={{color:"#ef4444",fontSize:12,margin:"0 0 10px",fontWeight:600}}>{erro}</p>}
-          <Btn onClick={confirmar} style={{width:"100%",padding:"12px"}}>Entrar →</Btn>
+          <Btn onClick={confirmar} disabled={carregando} style={{width:"100%",padding:"12px"}}>
+            {carregando?"Entrando...":"Entrar →"}
+          </Btn>
         </>}
       </div>
       <p style={{textAlign:"center",color:"rgba(255,255,255,0.25)",fontSize:11,marginTop:20}}>
@@ -481,12 +527,20 @@ function LoginScreen({ onLogin }) {
    PAINEL DO GESTOR
 ═══════════════════════════════════════════════════════════════════════════ */
 function GestorDashboard({ onLogout, onEntrarFornecedor }) {
-  const [fornecedores,setFornecedores]=useState(()=>lsGet(LS_FORNECEDORES,[]));
+  const [fornecedores,setFornecedores]=useState([]);
+  const [carregando,setCarregando]=useState(true);
   const [tela,setTela]=useState("lista");
   const [form,setForm]=useState(null);
-  const [editId,setEditId]=useState(null);
 
-  const salvar = (lista) => { setFornecedores(lista); lsSet(LS_FORNECEDORES,lista); };
+  // Carrega fornecedores do Supabase ao abrir
+  const recarregar = useCallback(async () => {
+    setCarregando(true);
+    const lista = await sbBuscarFornecedores();
+    setFornecedores(lista);
+    setCarregando(false);
+  }, []);
+
+  useEffect(()=>{ recarregar(); }, [recarregar]);
 
   const novoForm = () => ({
     id:uid(), nome:"", cnpj:"", usuario:"", senha:"", encarregado:"",
@@ -496,7 +550,7 @@ function GestorDashboard({ onLogout, onEntrarFornecedor }) {
   });
 
   const abrirNovo   = () => { setForm(novoForm()); setTela("novo"); };
-  const abrirEditar = (f) => { setForm(JSON.parse(JSON.stringify(f))); setEditId(f.id); setTela("editar"); };
+  const abrirEditar = (f) => { setForm(JSON.parse(JSON.stringify(f))); setTela("editar"); };
   const setF = (k,v) => setForm(p=>({...p,[k]:v}));
 
   const addEquip = () => setForm(p=>({...p,
@@ -508,21 +562,23 @@ function GestorDashboard({ onLogout, onEntrarFornecedor }) {
     equipamentos:p.equipamentos.map(e=>e.id===eid?{...e,[k]:v}:e)
   }));
 
-  const salvarForm = () => {
+  const salvarForm = async () => {
     if(!form.nome||!form.usuario||!form.senha){ alert("Nome, usuário e senha são obrigatórios."); return; }
-    const lista = lsGet(LS_FORNECEDORES,[]);
-    if(tela==="novo"){
-      if(lista.find(f=>f.usuario===form.usuario)){ alert("Este usuário já existe."); return; }
-      salvar([...lista,form]);
-    } else {
-      salvar(lista.map(f=>f.id===editId?form:f));
+    // Verifica usuário duplicado (apenas em novo cadastro)
+    if(tela==="novo" && fornecedores.find(f=>f.usuario===form.usuario)){
+      alert("Este usuário já existe."); return;
     }
+    const ok = await sbSalvarFornecedor(form);
+    if(!ok){ alert("Erro ao salvar no servidor. Verifique sua conexão e tente novamente."); return; }
+    await recarregar();
     setTela("lista");
   };
 
-  const excluir = (id) => {
+  const excluir = async (id) => {
     if(!window.confirm("Excluir este fornecedor?")) return;
-    salvar(fornecedores.filter(f=>f.id!==id));
+    const ok = await sbExcluirFornecedor(id);
+    if(!ok){ alert("Erro ao excluir no servidor."); return; }
+    await recarregar();
   };
 
   const calcSaldoFornecedor = (f) => {
@@ -573,7 +629,14 @@ function GestorDashboard({ onLogout, onEntrarFornecedor }) {
           },0))}`} accent={C.green}/>
       </div>
 
-      {fornecedores.length===0 ? (
+      {carregando ? (
+        <Card>
+          <div style={{padding:"48px 24px",textAlign:"center",color:C.muted}}>
+            <div style={{fontSize:40,marginBottom:12}}>⏳</div>
+            <p style={{fontSize:15,margin:0,fontWeight:600}}>Carregando fornecedores...</p>
+          </div>
+        </Card>
+      ) : fornecedores.length===0 ? (
         <Card>
           <div style={{padding:"48px 24px",textAlign:"center",color:C.muted}}>
             <div style={{fontSize:48,marginBottom:12}}>🏢</div>
