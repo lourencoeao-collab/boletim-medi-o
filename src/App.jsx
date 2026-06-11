@@ -1001,6 +1001,22 @@ function LancamentoScreen({ fornecedor, config, dias, setDias, onNext, onBack, p
     setAtivo(d.id);
   };
 
+  // Duplica o último dia lançado (copia dados, zera data e fotos)
+  const duplicarDia=()=>{
+    if(dias.length===0){ addDia(); return; }
+    const ultimo=dias[dias.length-1];
+    const d={
+      ...ultimo,
+      id:uid(),          // novo id
+      data:"",           // data em branco (evita duplicata)
+      fotos:[],          // fotos não são copiadas
+    };
+    const novos=[...dias,d];
+    setDias(novos);
+    salvar(novos);
+    setAtivo(d.id);
+  };
+
   const upd=(id,k,v)=>{
     setDias(p=>{
       const novos=p.map(d=>d.id===id?{...d,[k]:v}:d);
@@ -1112,7 +1128,10 @@ function LancamentoScreen({ fornecedor, config, dias, setDias, onNext, onBack, p
           <div style={{padding:"12px 16px",borderBottom:`1px solid ${C.border}`,
             display:"flex",justifyContent:"space-between",alignItems:"center",background:C.sand}}>
             <span style={{fontSize:12,fontWeight:700,color:C.navy}}>Dias lançados</span>
-            <Btn onClick={addDia} style={{padding:"5px 12px",fontSize:11}}>+ Novo dia</Btn>
+            <div style={{display:"flex",gap:6}}>
+              {dias.length>0&&<Btn variant="secondary" onClick={duplicarDia} style={{padding:"5px 10px",fontSize:11}}>⧉ Duplicar</Btn>}
+              <Btn onClick={addDia} style={{padding:"5px 12px",fontSize:11}}>+ Novo dia</Btn>
+            </div>
           </div>
           {dias.length===0?(
             <div style={{padding:"28px 16px",textAlign:"center",color:C.muted}}>
