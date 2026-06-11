@@ -866,7 +866,11 @@ function LancamentoScreen({ fornecedor, config, dias, setDias, onNext, onBack })
 
   // Salva automaticamente e atualiza indicador
   const salvar = useCallback((novos) => {
-    const ok = lsSet(lsKeyDias(fornecedor.id, config.mes, config.ano), novos);
+    // Salva todos os dados digitados, mas REMOVE as fotos antes de gravar.
+    // As fotos continuam na tela (state) durante a sessão e entram no PDF,
+    // mas não são persistidas — assim o armazenamento nunca estoura.
+    const semFotos = novos.map(d => ({ ...d, fotos: [] }));
+    const ok = lsSet(lsKeyDias(fornecedor.id, config.mes, config.ano), semFotos);
     if (ok) setUltimoSalvo(new Date());
     return ok;
   }, [fornecedor.id, config.mes, config.ano]);
@@ -900,7 +904,8 @@ function LancamentoScreen({ fornecedor, config, dias, setDias, onNext, onBack })
     const now=new Date();
     const ts=now.toLocaleDateString("pt-BR")+" "+now.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
     Array.from(files).forEach(file=>{
-      // Comprime antes de salvar — reduz ~90% do tamanho e evita estourar o armazenamento
+      // Comprime levemente só para o PDF não ficar pesado.
+      // As fotos NÃO são salvas no armazenamento — ficam só nesta sessão e entram no PDF.
       comprimirImagem(file, 1280, 0.7)
         .then(urlComprimida=>{
           setDias(p=>{
@@ -909,10 +914,7 @@ function LancamentoScreen({ fornecedor, config, dias, setDias, onNext, onBack })
                   ? [...d.fotos,{name:file.name,url:urlComprimida,caption:"",timestamp:ts}]
                   : d.fotos}
               : d);
-            const ok=salvar(novos);
-            if(ok===false){
-              alert("⚠ Não foi possível salvar a foto: o armazenamento do navegador está cheio.\n\nDica: gere o boletim (PDF/Excel) deste mês e depois remova fotos de meses antigos para liberar espaço.");
-            }
+            salvar(novos); // salva os dados (sem as fotos)
             return novos;
           });
         })
@@ -1143,7 +1145,7 @@ function LancamentoScreen({ fornecedor, config, dias, setDias, onNext, onBack })
                     style={{border:"2px dashed #fca5a5",borderRadius:8,padding:28,textAlign:"center",cursor:"pointer",background:"#FFF5F5"}}>
                     <div style={{fontSize:28,marginBottom:6}}>📸</div>
                     <p style={{margin:0,color:"#b91c1c",fontSize:13,fontWeight:700}}>Obrigatório: 6 fotos</p>
-                    <p style={{margin:"4px 0 0",color:C.muted,fontSize:11}}>Clique para selecionar · Data e horário registrados automaticamente</p>
+                    <p style={{margin:"4px 0 0",color:C.muted,fontSize:11}}>Clique para selecionar · As fotos entram no PDF mas não ficam salvas — gere o boletim antes de sair</p>
                   </div>
                 ):(
                   <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
@@ -1215,7 +1217,7 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
     ─────────────────────────────────────────────────────────────────── */}
     <style>{`
       @media print {
-        @page { size: A4 portrait; margin: 10mm; }
+        @page { size: A4 landscape; margin: 10mm; }
         .no-print { display: none !important; }
         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
@@ -1251,8 +1253,8 @@ function BoletimScreen({ fornecedor, config, dias, onBack }) {
           break-before: auto;
           page-break-before: auto;
         }
-        /* Garante que fotos e assinaturas não quebrem isoladas */
-        .folha-diaria img { max-height: 175px; object-fit: cover; }
+        /* Garante que fotos e assinaturas não quebrem isoladas (paisagem cabe mais) */
+        .folha-diaria img { max-height: 210px; object-fit: cover; }
         /* Compacta a folha diária para caber cabeçalho+dados+fotos+assinaturas em 1 página */
         .folha-diaria { font-size: 11px; }
         .folha-diaria > div:first-child { padding: 10px 18px !important; }
